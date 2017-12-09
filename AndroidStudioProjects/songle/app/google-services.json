@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "582660643233",
+    "firebase_url": "https://songle-4b80c.firebaseio.com",
+    "project_id": "songle-4b80c",
+    "storage_bucket": "songle-4b80c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:582660643233:android:765c6f689cedeaad",
+        "android_client_info": {
+          "package_name": "com.songle.sgl.songle"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "582660643233-rh26ec0fcaklose61n4ic0l7e623n06a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.songle.sgl.songle",
+            "certificate_hash": "da8b5361d117344e38a8503b575867c777682851"
+          }
+        },
+        {
+          "client_id": "582660643233-p7pcbt9ddplcaujkamnjtj08fdbck02f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEPMJL-OSqVtmTgS-vPgBLGsDsHX9Wi9k"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "582660643233-p7pcbt9ddplcaujkamnjtj08fdbck02f.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
