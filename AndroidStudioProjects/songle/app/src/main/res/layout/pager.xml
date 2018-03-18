@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:gravity="center_horizontal">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="let's play songle"
+        android:textSize="48sp"
+        android:layout_marginTop="50dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:layout_marginTop="20dp"
+        android:text="You seem to be a new player! ."/>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:layout_marginTop="20dp"
+        android:text="Can you guess the name of a song from the words: jumbo, lie, easy? How about: Wooo, heavy metal, checked, pleased? Your goal is to guess the name of a random song given a list of words in the song. Collect these words by moving to locations on a map. The more words you have, the easier it will be to guess the song. There are 5 different maps, (1-5 from easiest to hardest)."/>
+
+</LinearLayout>

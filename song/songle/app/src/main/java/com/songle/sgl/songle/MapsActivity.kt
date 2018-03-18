@@ -1,4 +1,4 @@
-package com.jingyang.songname
+package com.songle.sgl.songle
 
 import android.Manifest
 import android.content.Context
@@ -13,21 +13,26 @@ import android.media.ToneGenerator
 import android.net.ConnectivityManager
 import android.os.AsyncTask
 import android.os.Build
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
-
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.*
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
+import com.google.android.gms.maps.model.MarkerOptions
 import com.google.maps.android.data.kml.KmlLayer
+import kotlinx.android.synthetic.main.activity_maps.*
+import org.jetbrains.anko.design.snackbar
 import java.net.URL
-import java.util.ArrayList
+import java.time.LocalDateTime
+import java.util.*
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
 
@@ -36,22 +41,27 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
     var option = "1"
     private var words = ArrayList<String>()
     private val context = this
-    private var markerInfo = ArrayList<MarkerInfo>()
+    private var marker: Marker? = null
+    private var markerInfo = ArrayList<MarkerInfo>()   //defined in the DataParser.kt
     private var newLinelist = ArrayList<String>()
-    private var numPoints: Int = 0
+    private var numPoints: Int = 0                    //number of points/words on the map
 
+    private val edinburgh = LatLng(55.94425, -3.188396)  //default location
 
     internal val PERMISSION_ALL = 1
     internal val PERMISSIONS = arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
     private var locationManager: LocationManager? = null
-
+    private var lastLocation : Location? = null
+    private var cumScore : String = ""
+    private var time: LocalDateTime? = null
+    private var distance = 0.0
+    private var currentLocation: LatLng? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
-
         val myActionBar = supportActionBar
-        myActionBar!!.title ="SongName"
+        myActionBar!!.title ="Songle"    //display the tile of the activity
 
         val mapFragment = supportFragmentManager
                 .findFragmentById(R.id.map) as SupportMapFragment
@@ -62,6 +72,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
         song.artist = intent.getStringExtra("artist")
         song.link = intent.getStringExtra("link")
         option = intent.getStringExtra("option")
+        cumScore = intent.getStringExtra("cumScore")
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         if (Build.VERSION.SDK_INT >= 23 && !isPermissionGranted()) {
@@ -69,43 +80,45 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
         } else
             requestLocation()
         if (!isLocationEnabled())
-            Toast.makeText(this, "You need to enable your location permission !", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Songle needs access to your location", Toast.LENGTH_SHORT).show()
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        val edinburgh = LatLng(55.94425, -3.188396)
+
         mMap.moveCamera(CameraUpdateFactory.newLatLng(edinburgh))
         mMap.animateCamera(CameraUpdateFactory.zoomTo(16f))
+
         mMap.setOnMarkerClickListener(object: GoogleMap.OnMarkerClickListener {
            override fun onMarkerClick(m: Marker): Boolean {
 
               var locMarker = LatLng(m.position.latitude,m.position.longitude)
               val numWord = words.size
-              val loc = locationManager!!.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-              if (loc == null) {
-                  locationManager!!.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-              }
+              val loc = locationManager!!.getLastKnownLocation(LocationManager.GPS_PROVIDER)  //use GPS, AGPS
+              if (loc == null) {                                                              //high accuracy
+                  locationManager!!.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)   //use AGPS, CellID, WiFi MACID
+              }                                                                              //
               var result = true
-              if(loc != null) {
-                  val locCurrent = LatLng(loc.latitude, loc.longitude)
+              loc?.let{
+                  val locCurrent = LatLng(loc.latitude, loc.longitude)     //current location
                   val dis = distanceMeters(locMarker, locCurrent)
-                  var isExist = false
+                  var doesExist = false
+                  lastLocation = loc
                   val num = markerInfo.size
                   if(num>0) {
-                      for(i in 0..num-1) {
+                      for(i in 0 until num-1) {
                           if(markerInfo[i].id == m.id) {
-                              isExist = true
+                              doesExist = true
                               break
                           }
                       }
                   }
-                  if (dis < 20 && !isExist) {
-                      var markerinfo = MarkerInfo()
+                  if (dis < 20 && !doesExist) {      // less than 20m away from the clicked
+                      var markerinfo = MarkerInfo()  // marker and the marker hasn't already been visited/added
                       markerinfo.id = m.id
                       markerinfo.title = m.title
                       markerinfo.snippet = m.snippet
-                      markerInfo.add(markerinfo)
+                      markerInfo.add(markerinfo)       //add to collected markers
 
                       val icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
                       val name = m.title
@@ -116,19 +129,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
                       var seq2 = line.splitToSequence(" ", "\t")
                       var word = seq2.elementAt(c)
                       words.add(word)
-                      m.setIcon(icon)
+                      m.setIcon(icon)             //make the marker green
                       m.title = word
                       m.snippet = ""
-                      Toast.makeText(context, "The new word: $word", Toast.LENGTH_SHORT).show()
+                      Toast.makeText(context, "You have a new word! The word is $word", Toast.LENGTH_SHORT).show()
                       val toneG = ToneGenerator(AudioManager.STREAM_ALARM, 100)
                       toneG.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 50)
                       result = false
-                  } else if (isExist) {
+                  } else if (doesExist) {
                       result = false
-                  } else {
-                      result = true
                   }
-              }
+              }   //else if this is reached, result is true
               return result
            }
         })
@@ -136,7 +147,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
             var dt = DataTask()
             dt.execute()
         } else {
-            Toast.makeText(this, "The network is not connected !", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "no network connection", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -164,7 +175,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
             newLinelist = dataSource.readWordLine(song.number)
             val connection = url.openConnection()
             val kmlInputStream = connection.getInputStream()
-            layer = KmlLayer(mMap, kmlInputStream, getApplicationContext()) as KmlLayer
+            layer = KmlLayer(mMap, kmlInputStream, getApplicationContext())   //create the new kmllayer
             kmlInputStream.close()
             numPoints = dataSource.getNodeNum(song.number, option)
             val num = numPoints
@@ -180,9 +191,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
     override fun onPostExecute(layer: KmlLayer?) {
 
             layer?.addLayerToMap()
-            val edinburgh = LatLng(55.94425, -3.188396)
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(edinburgh))
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(edinburgh))      //move back to the centre
             mMap.animateCamera(CameraUpdateFactory.zoomTo(16f))
+            if(Build.VERSION.SDK_INT >= 26) time = LocalDateTime.now()
         }
     }
 
@@ -196,36 +207,53 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
         // Handle item selection
         when (item.itemId) {
             R.id.media_route_menu_item -> {
-                val intent = Intent(context, ResultActivity::class.java)
+                val intent = Intent(context, ResultActivity::class.java)   //create an intent to ResultActivity
                 intent.putExtra("number", song.number)
                 intent.putExtra("title", song.title)
                 intent.putExtra("artist", song.artist)
                 intent.putExtra("link", song.link)
 
+                if(Build.VERSION.SDK_INT >= 26) {
+                    val hour = LocalDateTime.now().hour-time!!.hour
+                    val minute = LocalDateTime.now().minute - time!!.minute
+                    intent.putExtra("time", "$hour hours and $minute minutes")
+                }
+
                 val basicScore = Math.round((1.0-(words.size.toFloat()-1.0)/(numPoints.toFloat()-1.0))*40.0+40.0+(5.0-option.toFloat())*5)
-                intent.putExtra("basicScore", basicScore.toString())
 
-                var wordlist ="You have collected these words:\n\n"
+                intent.putExtra("basicScore", basicScore.toString())    //penalizes easier maps and more collected words
+                var cum = basicScore.toInt()
+                if(cumScore!=null) {
+                    cum += cumScore.toInt()
+                }
 
-                for(i in 0..words.size-1) {
-                    if(i<words.size-1) {
-                        wordlist = wordlist + words[i] + ", "
+                intent.putExtra("cumScore", cum.toString())
+                val dis = Math.round(distance)
+                intent.putExtra("distance", dis.toString())
+
+                var wordlist ="Words you have collected:\n\n"
+
+                for(i in 0 until words.size) {
+
+                    wordlist = if(i<words.size-1) {    //show collected words
+                        wordlist + words[i] + ", "
                     } else {
-                        wordlist = wordlist + words[i] + ". "
+                        wordlist + words[i] + ". "
                     }
                 }
-                intent.putExtra("wordlist", wordlist);
+                intent.putExtra("wordlist", wordlist)
 
                 startActivity(intent)
                 return true
             }
+
             else -> return super.onOptionsItemSelected(item)
         }
     }
 
     private fun isNetworkConnected(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        return cm.getActiveNetworkInfo() != null;
+        return cm.getActiveNetworkInfo() != null
     }
 
     private fun requestLocation() {
@@ -243,15 +271,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
     private fun isPermissionGranted(): Boolean {
         if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             return true
-        } else {
-            return false
         }
+            return false
     }
 
-
-
     override fun onLocationChanged(location: Location) {
-
+        val position = LatLng(location.latitude,location.longitude)
+        val option = MarkerOptions()
+        val icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)
+        if(marker != null ) {
+            marker!!.remove()
+        }
+        option.position(position)
+        option.icon(icon)
+        marker=mMap.addMarker(option)
+        if(currentLocation != null)  distance += distanceMeters(currentLocation!!, position)
+        currentLocation = position
     }
 
     override fun onStatusChanged(s: String, i: Int, b: Bundle) {
